@@ -1,21 +1,29 @@
 # --- Bibliotheken einbinden ---
-import pyaudio             # Für Audioaufnahme über das Mikrofon
-import wave                # Zum Speichern der Aufnahme im WAV-Format
+import wave  # Zum Speichern der Aufnahme im WAV-Format
 import matplotlib
-matplotlib.use('TkAgg')   # GUI-Backend für Matplotlib (wird für interaktive Fensterdarstellung benötigt)
 import matplotlib.pyplot as plt  # Zum Erzeugen von Diagrammen
-import numpy as np        # Für numerische Operationen (z. B. Arrays, Mittelung, linspace)
-from scipy.io import wavfile        # Zum Einlesen von WAV-Dateien
-from scipy.fft import fft, fftfreq  # Für die Fouriertransformation (Spektralanalyse)
-from scipy import signal            # Für die Berechnung des Spektrogramms
+import numpy as np  # Für numerische Operationen (z. B. Arrays, Mittelung, linspace)
+import pyaudio  # Für Audioaufnahme über das Mikrofon
+from scipy import signal  # Für die Berechnung des Spektrogramms
+from scipy.fft import (
+    fft,
+    fftfreq,
+)  # Für die Fouriertransformation (Spektralanalyse)
+from scipy.io import wavfile  # Zum Einlesen von WAV-Dateien
+
+matplotlib.use(
+    "TkAgg"
+)  # GUI-Backend für Matplotlib (wird für interaktive Fensterdarstellung benötigt)
 
 # === Aufnahme-Parameter definieren ===
-FRAMES_PER_BUFFER = 3200          # Größe eines Datenblocks (Chunk): 3200 Samples werden auf einmal gelesen
-FORMAT = pyaudio.paInt16          # Audioformat: 16 Bit pro Sample (Standard bei CD-Qualität)
-CHANNELS = 2                      # Stereo-Aufnahme (2 Kanäle)
-RATE = 16000                      # Abtastrate in Hz: 16.000 Samples pro Sekunde
-RECORD_SECONDS = 10              # Dauer der Aufnahme in Sekunden
-OUTPUT_FILENAME = "output.wav"   # Dateiname der gespeicherten Aufnahme
+FRAMES_PER_BUFFER = 3200  # Größe eines Datenblocks (Chunk): 3200 Samples werden auf einmal gelesen
+FORMAT = (
+    pyaudio.paInt16
+)  # Audioformat: 16 Bit pro Sample (Standard bei CD-Qualität)
+CHANNELS = 2  # Stereo-Aufnahme (2 Kanäle)
+RATE = 16000  # Abtastrate in Hz: 16.000 Samples pro Sekunde
+RECORD_SECONDS = 10  # Dauer der Aufnahme in Sekunden
+OUTPUT_FILENAME = "output.wav"  # Dateiname der gespeicherten Aufnahme
 
 # === Aufnahme starten ===
 p = pyaudio.PyAudio()  # Initialisiere das PyAudio-Objekt
@@ -24,7 +32,7 @@ stream = p.open(
     channels=CHANNELS,
     rate=RATE,
     input=True,
-    frames_per_buffer=FRAMES_PER_BUFFER
+    frames_per_buffer=FRAMES_PER_BUFFER,
 )
 
 print("Recording...")
@@ -42,11 +50,13 @@ stream.close()
 p.terminate()
 
 # === Aufnahme in WAV-Datei speichern ===
-with wave.open(OUTPUT_FILENAME, 'wb') as wf:
+with wave.open(OUTPUT_FILENAME, "wb") as wf:
     wf.setnchannels(CHANNELS)  # Anzahl Kanäle setzen (Stereo)
     wf.setsampwidth(p.get_sample_size(FORMAT))  # Sample-Breite in Bytes
     wf.setframerate(RATE)  # Abtastrate setzen
-    wf.writeframes(b''.join(frames))  # Alle aufgenommenen Blöcke zusammenfügen und schreiben
+    wf.writeframes(
+        b"".join(frames)
+    )  # Alle aufgenommenen Blöcke zusammenfügen und schreiben
 
 # === WAV-Datei erneut einlesen zur Analyse ===
 fs_rate, audio_signal = wavfile.read(OUTPUT_FILENAME)
@@ -55,25 +65,25 @@ mikro_1 = audio_signal[:, 0]  # Linker Kanal
 mikro_2 = audio_signal[:, 1]  # Rechter Kanal
 
 # Falls die Aufnahme Stereo ist, beide Kanäle zu Mono mitteln
-#if audio_signal.ndim == 2:
-    #audio_signal = audio_signal.mean(axis=1)
+# if audio_signal.ndim == 2:
+# audio_signal = audio_signal.mean(axis=1)
 
 # === Vorbereitung für Zeitbereichsanalyse ===
 N = len(audio_signal)  # Anzahl der Samples
 t = np.linspace(0, N / fs_rate, num=N)  # Zeitachse in Sekunden
 
 ## === Zeitbereichs-Darstellung des Signals ===
-#plt.figure(figsize=(15, 5))
-#plt.plot(t, audio_signal)
-#plt.title("Audio Signal in Time Domain")
-#plt.xlabel("Time [s]")
-#plt.ylabel("Amplitude")
-#plt.tight_layout()
-#plt.grid()
+# plt.figure(figsize=(15, 5))
+# plt.plot(t, audio_signal)
+# plt.title("Audio Signal in Time Domain")
+# plt.xlabel("Time [s]")
+# plt.ylabel("Amplitude")
+# plt.tight_layout()
+# plt.grid()
 
 # Plot für Mikrofon 1
 plt.subplot(2, 1, 1)
-plt.plot(t, mikro_1, color='blue')
+plt.plot(t, mikro_1, color="blue")
 plt.title("Mikrofon 1 (Linker Kanal)")
 plt.xlabel("Zeit [s]")
 plt.ylabel("Amplitude")
@@ -81,7 +91,7 @@ plt.grid()
 
 # Plot für Mikrofon 2
 plt.subplot(2, 1, 2)
-plt.plot(t, mikro_2, color='orange')
+plt.plot(t, mikro_2, color="orange")
 plt.title("Mikrofon 2 (Rechter Kanal)")
 plt.xlabel("Zeit [s]")
 plt.ylabel("Amplitude")
@@ -91,10 +101,10 @@ plt.tight_layout()
 plt.show()
 
 # === Frequenzbereichsanalyse mit FFT ===
-FFT_mikro_1 = np.abs(fft(mikro_1))       # Betrag der komplexen Fouriertransformation
-freqs = fftfreq(N, 1 / fs_rate)       # Frequenzachse berechnen
-FFT_mikro_2 = np.abs(fft(mikro_2))       # Betrag der komplexen Fouriertransformation
-freqs = fftfreq(N, 1 / fs_rate)       # Frequenzachse berechnen
+FFT_mikro_1 = np.abs(fft(mikro_1))  # Betrag der komplexen Fouriertransformation
+freqs = fftfreq(N, 1 / fs_rate)  # Frequenzachse berechnen
+FFT_mikro_2 = np.abs(fft(mikro_2))  # Betrag der komplexen Fouriertransformation
+freqs = fftfreq(N, 1 / fs_rate)  # Frequenzachse berechnen
 
 plt.figure(figsize=(15, 8))
 
@@ -108,7 +118,7 @@ plt.grid()
 
 # --- Darstellung: nur positive Frequenzen (nützlicher Teil) ---
 plt.subplot(2, 1, 2)
-plt.plot(freqs[:N // 2], FFT_mikro_1[:N // 2])
+plt.plot(freqs[: N // 2], FFT_mikro_1[: N // 2])
 plt.title("FFT - Single-sided Spectrum")
 plt.xlabel("Frequency [Hz]")
 plt.ylabel("Magnitude")
@@ -123,7 +133,7 @@ plt.grid()
 
 # --- Darstellung: nur positive Frequenzen (nützlicher Teil) ---
 plt.subplot(2, 1, 2)
-plt.plot(freqs[:N // 2], FFT_mikro_2[:N // 2])
+plt.plot(freqs[: N // 2], FFT_mikro_2[: N // 2])
 plt.title("FFT - Single-sided Spectrum")
 plt.xlabel("Frequency [Hz]")
 plt.ylabel("Magnitude")
@@ -142,11 +152,11 @@ Sxx_db1 = 10 * np.log10(Sxx1 + 1e-12)
 Sxx_db1 -= np.max(Sxx_db1)  # Auf 0 dBFS normieren
 
 # Plot für Mikro 1
-pcm1 = plt.pcolormesh(t_spec1, f1, Sxx_db1, shading='gouraud', cmap='viridis')
+pcm1 = plt.pcolormesh(t_spec1, f1, Sxx_db1, shading="gouraud", cmap="viridis")
 # plt.ylim(2000, 6000)  # Auskommentiert, um das volle Spektrum (0-8kHz) zu sehen!
-plt.ylabel('Frequenz [Hz]')
-plt.title('Spektrogramm - Mikrofon 1 (Eingang 1)')
-plt.colorbar(pcm1, label='Spektrale Leistung [dB]')
+plt.ylabel("Frequenz [Hz]")
+plt.title("Spektrogramm - Mikrofon 1 (Eingang 1)")
+plt.colorbar(pcm1, label="Spektrale Leistung [dB]")
 
 # --- 2. Spektrogramm für Mikrofon 2 ---
 plt.subplot(2, 1, 2)
@@ -156,12 +166,12 @@ Sxx_db2 = 10 * np.log10(Sxx2 + 1e-12)
 Sxx_db2 -= np.max(Sxx_db2)  # Auf 0 dBFS normieren
 
 # Plot für Mikro 2
-pcm2 = plt.pcolormesh(t_spec2, f2, Sxx_db2, shading='gouraud', cmap='viridis')
+pcm2 = plt.pcolormesh(t_spec2, f2, Sxx_db2, shading="gouraud", cmap="viridis")
 # plt.ylim(2000, 6000)  # Auskommentiert, um das volle Spektrum (0-8kHz) zu sehen!
-plt.ylabel('Frequenz [Hz]')
-plt.xlabel('Zeit [s]')
-plt.title('Spektrogramm - Mikrofon 2 (Eingang 2)')
-plt.colorbar(pcm2, label='Spektrale Leistung [dB]')
+plt.ylabel("Frequenz [Hz]")
+plt.xlabel("Zeit [s]")
+plt.title("Spektrogramm - Mikrofon 2 (Eingang 2)")
+plt.colorbar(pcm2, label="Spektrale Leistung [dB]")
 
 plt.tight_layout()
 plt.show()
