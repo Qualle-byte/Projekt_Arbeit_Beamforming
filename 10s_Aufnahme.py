@@ -1,6 +1,7 @@
 # --- Bibliotheken einbinden ---
 import wave  # Zum Speichern der Aufnahme im WAV-Format
 import matplotlib
+import math
 import matplotlib.pyplot as plt  # Zum Erzeugen von Diagrammen
 import numpy as np  # Für numerische Operationen (z. B. Arrays, Mittelung, linspace)
 import pyaudio  # Für Audioaufnahme über das Mikrofon
@@ -229,3 +230,35 @@ cbar2 = plt.colorbar(
 cbar2.ax.set_yticklabels(["-π", "-π/2", "0", "π/2", "π"])
 
 plt.tight_layout()
+plt.show()
+
+phase_diff = phase1 - phase2
+plt.figure(figsize=(15, 5))
+pcm_diff = plt.pcolormesh(
+    t_spec1, f1, phase_diff, shading="gouraud", cmap="twilight"
+)
+plt.xlabel("Zeit [s]")
+plt.ylabel("Frequenz [Hz]")
+plt.title("Phasendifferenz - Mikrofon 1 - Mikrofon 2")
+cbar_diff = plt.colorbar(
+    pcm_diff,
+    label="Phase [Radiant]",
+    ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+)
+cbar_diff.ax.set_yticklabels(["-π", "-π/2", "0", "π/2", "π"])
+plt.show()
+
+#Mittelwert der Phasendifferenz
+mean_phase_diff = np.mean(phase_diff, axis=1)  
+#Zeitdifferenz berechnen
+#c = 343  # Schallgeschwindigkeit in Luft in m/s
+#d = 0.2  # Abstand zwischen den Mikrofonen in Metern
+time_diff = mean_phase_diff / (2 * np.pi * f1)  # Zeitdifferenz in Sekunden
+print(time_diff)
+plt.figure(figsize=(15, 5))     
+plt.plot(f1, mean_phase_diff, color="purple")
+plt.xlabel("Frequenz [Hz]") 
+plt.ylabel("Mittlere Phasendifferenz [Radiant]")
+plt.title("Mittlere Phasendifferenz über die Zeit")
+plt.grid()
+plt.show()
