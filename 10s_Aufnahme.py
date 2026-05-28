@@ -147,31 +147,85 @@ plt.figure(figsize=(15, 10))
 # --- 1. Spektrogramm für Mikrofon 1 ---
 plt.subplot(2, 1, 1)
 # STFT berechnen für Mikro 1
-f1, t_spec1, Sxx1 = signal.spectrogram(mikro_1, fs=fs_rate)
+f1, t_spec1, Sxx1 = signal.spectrogram(mikro_1, fs=fs_rate, mode="complex")
+phase1 = np.angle(Sxx1)  # Phase extrahieren 
 Sxx_db1 = 10 * np.log10(Sxx1 + 1e-12)
 Sxx_db1 -= np.max(Sxx_db1)  # Auf 0 dBFS normieren
 
-# Plot für Mikro 1
-pcm1 = plt.pcolormesh(t_spec1, f1, Sxx_db1, shading="gouraud", cmap="viridis")
-# plt.ylim(2000, 6000)  # Auskommentiert, um das volle Spektrum (0-8kHz) zu sehen!
-plt.ylabel("Frequenz [Hz]")
-plt.title("Spektrogramm - Mikrofon 1 (Eingang 1)")
-plt.colorbar(pcm1, label="Spektrale Leistung [dB]")
+# --- 1. Berechnungen für Mikrofon 1 ---
+f1, t_spec1, Sxx1_complex = signal.spectrogram(
+    mikro_1, fs=fs_rate, mode="complex"
+)
+phase1 = np.angle(Sxx1_complex)  # Phase extrahieren (float)
 
-# --- 2. Spektrogramm für Mikrofon 2 ---
-plt.subplot(2, 1, 2)
-# STFT berechnen für Mikro 2
-f2, t_spec2, Sxx2 = signal.spectrogram(mikro_2, fs=fs_rate)
-Sxx_db2 = 10 * np.log10(Sxx2 + 1e-12)
+# Betrag/Leistung korrekt berechnen vor dem Logarithmus!
+Sxx1_magnitude = np.abs(Sxx1_complex) ** 2
+Sxx_db1 = 10 * np.log10(Sxx1_magnitude + 1e-12)
+Sxx_db1 -= np.max(Sxx_db1)  # Auf 0 dBFS normieren
+
+# --- 2. Berechnungen für Mikrofon 2 ---
+f2, t_spec2, Sxx2_complex = signal.spectrogram(
+    mikro_2, fs=fs_rate, mode="complex"
+)
+phase2 = np.angle(Sxx2_complex)  # Phase extrahieren (float)
+
+# Betrag/Leistung korrekt berechnen vor dem Logarithmus!
+Sxx2_magnitude = np.abs(Sxx2_complex) ** 2
+Sxx_db2 = 10 * np.log10(Sxx2_magnitude + 1e-12)
 Sxx_db2 -= np.max(Sxx_db2)  # Auf 0 dBFS normieren
 
-# Plot für Mikro 2
-pcm2 = plt.pcolormesh(t_spec2, f2, Sxx_db2, shading="gouraud", cmap="viridis")
-# plt.ylim(2000, 6000)  # Auskommentiert, um das volle Spektrum (0-8kHz) zu sehen!
+
+# --- 3. Visualisierung (2x2 Grid für perfekte Übersicht) ---
+plt.figure(figsize=(15, 10))
+
+# --- MIKROFON 1 ---
+# Links: Leistung
+plt.subplot(2, 2, 1)
+pcm1_db = plt.pcolormesh(
+    t_spec1, f1, Sxx_db1, shading="gouraud", cmap="viridis"
+)
 plt.ylabel("Frequenz [Hz]")
+plt.title("Spektrogramm (Leistung) - Mikro 1")
+plt.colorbar(pcm1_db, label="Spektrale Leistung [dB]")
+
+# Rechts: Phase
+plt.subplot(2, 2, 2)
+pcm1_ph = plt.pcolormesh(
+    t_spec1, f1, phase1, shading="gouraud", cmap="twilight"
+)
+plt.ylabel("Frequenz [Hz]")
+plt.title("Phasen-Spektrogramm - Mikro 1")
+cbar1 = plt.colorbar(
+    pcm1_ph,
+    label="Phase [Radiant]",
+    ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+)
+cbar1.ax.set_yticklabels(["-π", "-π/2", "0", "π/2", "π"])
+
+# --- MIKROFON 2 ---
+# Links: Leistung
+plt.subplot(2, 2, 3)
+pcm2_db = plt.pcolormesh(
+    t_spec2, f2, Sxx_db2, shading="gouraud", cmap="viridis"
+)
 plt.xlabel("Zeit [s]")
-plt.title("Spektrogramm - Mikrofon 2 (Eingang 2)")
-plt.colorbar(pcm2, label="Spektrale Leistung [dB]")
+plt.ylabel("Frequenz [Hz]")
+plt.title("Spektrogramm (Leistung) - Mikro 2")
+plt.colorbar(pcm2_db, label="Spektrale Leistung [dB]")
+
+# Rechts: Phase
+plt.subplot(2, 2, 4)
+pcm2_ph = plt.pcolormesh(
+    t_spec2, f2, phase2, shading="gouraud", cmap="twilight"
+)
+plt.xlabel("Zeit [s]")
+plt.ylabel("Frequenz [Hz]")
+plt.title("Phasen-Spektrogramm - Mikro 2")
+cbar2 = plt.colorbar(
+    pcm2_ph,
+    label="Phase [Radiant]",
+    ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+)
+cbar2.ax.set_yticklabels(["-π", "-π/2", "0", "π/2", "π"])
 
 plt.tight_layout()
-plt.show()
