@@ -262,29 +262,27 @@ plt.ylabel("Mittlere Phasendifferenz [Radiant]")
 plt.title("Mittlere Phasendifferenz über die Zeit")
 plt.grid()
 plt.show()
-# Coole Formel
-x = fft(mikro_1)
-y = fft(mikro_2)
-Phasendifferenz = np.angle(x * np.conj(y))
-#plotte die Phasendifferenz
-plt.figure(figsize=(15, 5))
-plt.plot(freqs[: N // 2], Phasendifferenz[: N // 2], color="green")
-plt.xlabel("Frequenz [Hz]")
-plt.ylabel("Phasendifferenz [Radiant]")
-plt.title("Phasendifferenz über die Frequenz")
-plt.grid()
-plt.show()
-Grundfrequenz = RATE/FRAMES_PER_BUFFER
+# --- Methode 1: Phasendifferenz an der dominanten Frequenz ---
 
+# 1. Finde den Index der maximalen Frequenz im Spektrum (sollte bei ca. 2000 Hz liegen)
+# Wir suchen nur in der ersten Hälfte (positive Frequenzen)
+idx_peak = np.argmax(FFT_mikro_1[:N//2])
+freq_peak = freqs[idx_peak]
 
-for k in range(N):
-    Längendifferenz= (343*Phasendifferenz[k])/(2*3.141*k*Grundfrequenz)
+print(f"Dominante Frequenz gefunden bei: {freq_peak:.2f} Hz")
 
-#plotte die Längendifferenz
-plt.figure(figsize=(15, 5))
-plt.plot(freqs[: N // 2], Längendifferenz[: N // 2], color="red")
-plt.xlabel("Frequenz [Hz]") 
-plt.ylabel("Längendifferenz [m]")
-plt.title("Längendifferenz über die Frequenz")
-plt.grid()
-plt.show()
+# 2. Kreuzspektrum NUR für diese Frequenz auswerten
+x_peak = fft(mikro_1)[idx_peak]
+y_peak = fft(mikro_2)[idx_peak]
+
+phase_diff_peak = np.angle(x_peak * np.conj(y_peak))
+
+print(f"Phasendifferenz bei {freq_peak:.2f} Hz: {phase_diff_peak:.4f} Radiant")
+
+# 3. Zeitdifferenz und Winkel berechnen
+c = 343.0  # Schallgeschwindigkeit in m/s
+d = 0.08575    # Mikrofonabstand in m 
+
+angle_rad=np.arcsin(phase_diff_peak/np.pi)
+angle_deg=np.degrees(angle_rad)
+print(f"Berechneter Einfallswinkel: {angle_deg:.2f} Grad")
