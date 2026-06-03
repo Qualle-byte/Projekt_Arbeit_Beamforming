@@ -26,38 +26,38 @@ RATE = 16000  # Abtastrate in Hz: 16.000 Samples pro Sekunde
 RECORD_SECONDS = 10  # Dauer der Aufnahme in Sekunden
 OUTPUT_FILENAME = "output.wav"  # Dateiname der gespeicherten Aufnahme
 
-# === Aufnahme starten ===
-p = pyaudio.PyAudio()  # Initialisiere das PyAudio-Objekt
-stream = p.open(
-    format=FORMAT,
-    channels=CHANNELS,
-    rate=RATE,
-    input=True,
-    frames_per_buffer=FRAMES_PER_BUFFER,
-)
+## === Aufnahme starten ===
+#p = pyaudio.PyAudio()  # Initialisiere das PyAudio-Objekt
+#stream = p.open(
+    #format=FORMAT,
+    #channels=CHANNELS,
+    #rate=RATE,
+    #input=True,
+    #frames_per_buffer=FRAMES_PER_BUFFER,
+#)
 
-print("Recording...")
+#print("Recording...")
 
-frames = []  # Liste zum Zwischenspeichern der aufgenommenen Datenblöcke
+#frames = []  # Liste zum Zwischenspeichern der aufgenommenen Datenblöcke
 
-# Schleife liest kontinuierlich Chunks und speichert sie
-for _ in range(0, int(RATE / FRAMES_PER_BUFFER * RECORD_SECONDS)):
-    data = stream.read(FRAMES_PER_BUFFER)
-    frames.append(data)
+## Schleife liest kontinuierlich Chunks und speichert sie
+#for _ in range(0, int(RATE / FRAMES_PER_BUFFER * RECORD_SECONDS)):
+    #data = stream.read(FRAMES_PER_BUFFER)
+    #frames.append(data)
 
-# === Aufnahme beenden und Stream schließen ===
-stream.stop_stream()
-stream.close()
-p.terminate()
+## === Aufnahme beenden und Stream schließen ===
+#stream.stop_stream()
+#stream.close()
+#p.terminate()
 
-# === Aufnahme in WAV-Datei speichern ===
-with wave.open(OUTPUT_FILENAME, "wb") as wf:
-    wf.setnchannels(CHANNELS)  # Anzahl Kanäle setzen (Stereo)
-    wf.setsampwidth(p.get_sample_size(FORMAT))  # Sample-Breite in Bytes
-    wf.setframerate(RATE)  # Abtastrate setzen
-    wf.writeframes(
-        b"".join(frames)
-    )  # Alle aufgenommenen Blöcke zusammenfügen und schreiben
+## === Aufnahme in WAV-Datei speichern ===
+#with wave.open(OUTPUT_FILENAME, "wb") as wf:
+    #wf.setnchannels(CHANNELS)  # Anzahl Kanäle setzen (Stereo)
+    #wf.setsampwidth(p.get_sample_size(FORMAT))  # Sample-Breite in Bytes
+    #wf.setframerate(RATE)  # Abtastrate setzen
+    #wf.writeframes(
+        #b"".join(frames)
+    #)  # Alle aufgenommenen Blöcke zusammenfügen und schreiben
 
 # === WAV-Datei erneut einlesen zur Analyse ===
 fs_rate, audio_signal = wavfile.read(OUTPUT_FILENAME)
@@ -260,5 +260,31 @@ plt.plot(f1, mean_phase_diff, color="purple")
 plt.xlabel("Frequenz [Hz]") 
 plt.ylabel("Mittlere Phasendifferenz [Radiant]")
 plt.title("Mittlere Phasendifferenz über die Zeit")
+plt.grid()
+plt.show()
+# Coole Formel
+x = fft(mikro_1)
+y = fft(mikro_2)
+Phasendifferenz = np.angle(x * np.conj(y))
+#plotte die Phasendifferenz
+plt.figure(figsize=(15, 5))
+plt.plot(freqs[: N // 2], Phasendifferenz[: N // 2], color="green")
+plt.xlabel("Frequenz [Hz]")
+plt.ylabel("Phasendifferenz [Radiant]")
+plt.title("Phasendifferenz über die Frequenz")
+plt.grid()
+plt.show()
+Grundfrequenz = RATE/FRAMES_PER_BUFFER
+
+
+for k in range(N):
+    Längendifferenz= (343*Phasendifferenz[k])/(2*3.141*k*Grundfrequenz)
+
+#plotte die Längendifferenz
+plt.figure(figsize=(15, 5))
+plt.plot(freqs[: N // 2], Längendifferenz[: N // 2], color="red")
+plt.xlabel("Frequenz [Hz]") 
+plt.ylabel("Längendifferenz [m]")
+plt.title("Längendifferenz über die Frequenz")
 plt.grid()
 plt.show()
