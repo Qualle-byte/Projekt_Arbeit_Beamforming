@@ -17,54 +17,68 @@ matplotlib.use(
 )  # GUI-Backend für Matplotlib (wird für interaktive Fensterdarstellung benötigt)
 
 # === Aufnahme-Parameter definieren ===
-FRAMES_PER_BUFFER = 3200  # Größe eines Datenblocks (Chunk): 3200 Samples werden auf einmal gelesen
-FORMAT = (
-    pyaudio.paInt16
-)  # Audioformat: 16 Bit pro Sample (Standard bei CD-Qualität)
-CHANNELS = 2  # Stereo-Aufnahme (2 Kanäle)
-RATE = 16000  # Abtastrate in Hz: 16.000 Samples pro Sekunde
-RECORD_SECONDS = 10  # Dauer der Aufnahme in Sekunden
-OUTPUT_FILENAME = "output.wav"  # Dateiname der gespeicherten Aufnahme
+# === Correct parameters for UR816C ===
+FRAMES_PER_BUFFER = 4800        # Chunk size (0.1s at 48kHz)
+FORMAT = pyaudio.paInt32        # 32-bit — must match s32le from PipeWire
+CHANNELS = 4                    # Physical inputs 1–4 on the UR816C
+RATE = 48000                    # Must be 48000 — what the device actually runs at
+RECORD_SECONDS = 10
+OUTPUT_FILENAME = "output.wav"
+DEVICE_INDEX = 2                # UR816C index found by scanner
 
-## === Aufnahme starten ===
-#p = pyaudio.PyAudio()  # Initialisiere das PyAudio-Objekt
-#stream = p.open(
-    #format=FORMAT,
-    #channels=CHANNELS,
-    #rate=RATE,
-    #input=True,
-    #frames_per_buffer=FRAMES_PER_BUFFER,
-#)
+# === Aufnahme starten ===
+p = pyaudio.PyAudio()
 
-#print("Recording...")
+# Verify before opening
+info = p.get_device_info_by_index(DEVICE_INDEX)
+print(f"Using device: {info['name']}")
+print(f"Max input channels: {info['maxInputChannels']}")
 
-#frames = []  # Liste zum Zwischenspeichern der aufgenommenen Datenblöcke
+stream = p.open(
+    format=FORMAT,
+    channels=CHANNELS,
+    rate=RATE,
+    input=True,
+    input_device_index=DEVICE_INDEX,
+    frames_per_buffer=FRAMES_PER_BUFFER,
+    stream_callback=None,
+)
 
-## Schleife liest kontinuierlich Chunks und speichert sie
-#for _ in range(0, int(RATE / FRAMES_PER_BUFFER * RECORD_SECONDS)):
-    #data = stream.read(FRAMES_PER_BUFFER)
-    #frames.append(data)
+print(f"Recording {CHANNELS} channels at {RATE} Hz for {RECORD_SECONDS}s...")
+frames = []
 
-## === Aufnahme beenden und Stream schließen ===
-#stream.stop_stream()
-#stream.close()
-#p.terminate()
+for _ in range(0, int(RATE / FRAMES_PER_BUFFER * RECORD_SECONDS)):
+    data = stream.read(FRAMES_PER_BUFFER, exception_on_overflow=False)
+    frames.append(data)
 
-## === Aufnahme in WAV-Datei speichern ===
-#with wave.open(OUTPUT_FILENAME, "wb") as wf:
-    #wf.setnchannels(CHANNELS)  # Anzahl Kanäle setzen (Stereo)
-    #wf.setsampwidth(p.get_sample_size(FORMAT))  # Sample-Breite in Bytes
-    #wf.setframerate(RATE)  # Abtastrate setzen
-    #wf.writeframes(
-        #b"".join(frames)
-    #)  # Alle aufgenommenen Blöcke zusammenfügen und schreiben
+stream.stop_stream()
+stream.close()
+p.terminate()
+print("Recording done.")
 
-# === WAV-Datei erneut einlesen zur Analyse ===
+# === WAV speichern ===
+with wave.open(OUTPUT_FILENAME, "wb") as wf:
+    wf.setnchannels(CHANNELS)
+    wf.setsampwidth(4)           # 4 bytes = 32 bit
+    wf.setframerate(RATE)
+    wf.writeframes(b"".join(frames))
+
+# === WAV einlesen & Kanäle trennen ===
 fs_rate, audio_signal = wavfile.read(OUTPUT_FILENAME)
 
-mikro_1 = audio_signal[:, 0]  # Linker Kanal
-mikro_2 = audio_signal[:, 1]  # Rechter Kanal
+print(f"Shape: {audio_signal.shape}")        # Should be (480000, 4)
+print(f"Sample rate: {fs_rate} Hz")
+print(f"dtype: {audio_signal.dtype}")        # Should be int32
 
+mikro_1 = audio_signal[:, 0]   # Physical input 1
+mikro_2 = audio_signal[:, 1]   # Physical input 2
+mikro_3 = audio_signal[:, 2]   # Physical input 3
+mikro_4 = audio_signal[:, 3]   # Physical input 4
+
+print(mikro_1)
+print(mikro_2)
+print(mikro_3)
+print(mikro_4)
 # Falls die Aufnahme Stereo ist, beide Kanäle zu Mono mitteln
 # if audio_signal.ndim == 2:
 # audio_signal = audio_signal.mean(axis=1)
@@ -74,16 +88,9 @@ N = len(audio_signal)  # Anzahl der Samples
 t = np.linspace(0, N / fs_rate, num=N)  # Zeitachse in Sekunden
 
 ## === Zeitbereichs-Darstellung des Signals ===
-# plt.figure(figsize=(15, 5))
-# plt.plot(t, audio_signal)
-# plt.title("Audio Signal in Time Domain")
-# plt.xlabel("Time [s]")
-# plt.ylabel("Amplitude")
-# plt.tight_layout()
-# plt.grid()
 
 # Plot für Mikrofon 1
-plt.subplot(2, 1, 1)
+plt.subplot(2, 2, 1)
 plt.plot(t, mikro_1, color="blue")
 plt.title("Mikrofon 1 (Linker Kanal)")
 plt.xlabel("Zeit [s]")
@@ -91,9 +98,25 @@ plt.ylabel("Amplitude")
 plt.grid()
 
 # Plot für Mikrofon 2
-plt.subplot(2, 1, 2)
+plt.subplot(2, 2, 2)
 plt.plot(t, mikro_2, color="orange")
 plt.title("Mikrofon 2 (Rechter Kanal)")
+plt.xlabel("Zeit [s]")
+plt.ylabel("Amplitude")
+plt.grid()
+
+# Plot für Mikrofon 3
+plt.subplot(2, 2, 3)
+plt.plot(t, mikro_3, color="green")
+plt.title("Mikrofon 3 (Dritter Kanal)")
+plt.xlabel("Zeit [s]")
+plt.ylabel("Amplitude")
+plt.grid()
+
+# Plot für Mikrofon 4
+plt.subplot(2, 2, 4)
+plt.plot(t, mikro_4, color="red")
+plt.title("Mikrofon 4 (Vierter Kanal)")
 plt.xlabel("Zeit [s]")
 plt.ylabel("Amplitude")
 plt.grid()
@@ -117,30 +140,30 @@ plt.xlabel("Frequency [Hz]")
 plt.ylabel("Magnitude")
 plt.grid()
 
-# --- Darstellung: nur positive Frequenzen (nützlicher Teil) ---
-plt.subplot(2, 1, 2)
-plt.plot(freqs[: N // 2], FFT_mikro_1[: N // 2])
-plt.title("FFT - Single-sided Spectrum")
-plt.xlabel("Frequency [Hz]")
-plt.ylabel("Magnitude")
-plt.grid()
+## --- Darstellung: nur positive Frequenzen (nützlicher Teil) ---
+#plt.subplot(2, 1, 2)
+#plt.plot(freqs[: N // 2], FFT_mikro_1[: N // 2])
+#plt.title("FFT - Single-sided Spectrum")
+#plt.xlabel("Frequency [Hz]")
+#plt.ylabel("Magnitude")
+#plt.grid()
 
-plt.subplot(2, 1, 1)
-plt.plot(freqs, FFT_mikro_2)
-plt.title("FFT - Double-sided Spectrum")
-plt.xlabel("Frequency [Hz]")
-plt.ylabel("Magnitude")
-plt.grid()
+#plt.subplot(2, 1, 1)
+#plt.plot(freqs, FFT_mikro_2)
+#plt.title("FFT - Double-sided Spectrum")
+#plt.xlabel("Frequency [Hz]")
+#plt.ylabel("Magnitude")
+#plt.grid()
 
-# --- Darstellung: nur positive Frequenzen (nützlicher Teil) ---
-plt.subplot(2, 1, 2)
-plt.plot(freqs[: N // 2], FFT_mikro_2[: N // 2])
-plt.title("FFT - Single-sided Spectrum")
-plt.xlabel("Frequency [Hz]")
-plt.ylabel("Magnitude")
-plt.grid()
-plt.tight_layout()
-plt.show()
+## --- Darstellung: nur positive Frequenzen (nützlicher Teil) ---
+#plt.subplot(2, 1, 2)
+#plt.plot(freqs[: N // 2], FFT_mikro_2[: N // 2])
+#plt.title("FFT - Single-sided Spectrum")
+#plt.xlabel("Frequency [Hz]")
+#plt.ylabel("Magnitude")
+#plt.grid()
+#plt.tight_layout()
+#plt.show()
 
 # === Spektrogramme für BEIDE Mikrofone erzeugen ===
 plt.figure(figsize=(15, 10))
@@ -232,36 +255,36 @@ cbar2.ax.set_yticklabels(["-π", "-π/2", "0", "π/2", "π"])
 plt.tight_layout()
 plt.show()
 
-phase_diff = phase1 - phase2
-plt.figure(figsize=(15, 5))
-pcm_diff = plt.pcolormesh(
-    t_spec1, f1, phase_diff, shading="gouraud", cmap="twilight"
-)
-plt.xlabel("Zeit [s]")
-plt.ylabel("Frequenz [Hz]")
-plt.title("Phasendifferenz - Mikrofon 1 - Mikrofon 2")
-cbar_diff = plt.colorbar(
-    pcm_diff,
-    label="Phase [Radiant]",
-    ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
-)
-cbar_diff.ax.set_yticklabels(["-π", "-π/2", "0", "π/2", "π"])
-plt.show()
+#phase_diff = phase1 - phase2
+#plt.figure(figsize=(15, 5))
+#pcm_diff = plt.pcolormesh(
+    #t_spec1, f1, phase_diff, shading="gouraud", cmap="twilight"
+#)
+#plt.xlabel("Zeit [s]")
+#plt.ylabel("Frequenz [Hz]")
+#plt.title("Phasendifferenz - Mikrofon 1 - Mikrofon 2")
+#cbar_diff = plt.colorbar(
+    #pcm_diff,
+    #label="Phase [Radiant]",
+    #ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+#)
+#cbar_diff.ax.set_yticklabels(["-π", "-π/2", "0", "π/2", "π"])
+#plt.show()
 
-#Mittelwert der Phasendifferenz
-mean_phase_diff = np.mean(phase_diff, axis=1)  
-#Zeitdifferenz berechnen
-#c = 343  # Schallgeschwindigkeit in Luft in m/s
-#d = 0.2  # Abstand zwischen den Mikrofonen in Metern
-time_diff = mean_phase_diff / (2 * np.pi * f1)  # Zeitdifferenz in Sekunden
-print(time_diff)
-plt.figure(figsize=(15, 5))     
-plt.plot(f1, mean_phase_diff, color="purple")
-plt.xlabel("Frequenz [Hz]") 
-plt.ylabel("Mittlere Phasendifferenz [Radiant]")
-plt.title("Mittlere Phasendifferenz über die Zeit")
-plt.grid()
-plt.show()
+##Mittelwert der Phasendifferenz
+#mean_phase_diff = np.mean(phase_diff, axis=1)  
+##Zeitdifferenz berechnen
+##c = 343  # Schallgeschwindigkeit in Luft in m/s
+##d = 0.2  # Abstand zwischen den Mikrofonen in Metern
+#time_diff = mean_phase_diff / (2 * np.pi * f1)  # Zeitdifferenz in Sekunden
+#print(time_diff)
+#plt.figure(figsize=(15, 5))     
+#plt.plot(f1, mean_phase_diff, color="purple")
+#plt.xlabel("Frequenz [Hz]") 
+#plt.ylabel("Mittlere Phasendifferenz [Radiant]")
+#plt.title("Mittlere Phasendifferenz über die Zeit")
+#plt.grid()
+#plt.show()
 # --- Methode 1: Phasendifferenz an der dominanten Frequenz ---
 
 # 1. Finde den Index der maximalen Frequenz im Spektrum (sollte bei ca. 2000 Hz liegen)
@@ -285,4 +308,4 @@ d = 0.08575    # Mikrofonabstand in m
 
 angle_rad=np.arcsin(phase_diff_peak/np.pi)
 angle_deg=np.degrees(angle_rad)
-print(f"Berechneter Einfallswinkel: {angle_deg:.2f} Grad")
+print(f"Berechneter Einfallswinkel: {angle_deg:.2f} °")
