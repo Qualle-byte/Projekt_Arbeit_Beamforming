@@ -108,3 +108,38 @@ def Winkel_LDS(x_peak, y_peak,freq_peak,d):
      angle_deg=np.degrees(angle_rad)
      print(f"Berechneter Einfallswinkel mit Kreuzleistungsdichtespektrum: {angle_deg:.2f} °")
      return 0
+
+def plot_polar_spectrum(phi_deg, P_values_dB, final_angle, freq_peak):
+    """
+    Erzeugt einen Halbkreis-Polarplot (0° Rechts, 90° Oben, 180° Links).
+    
+    Parameter:
+    - phi_deg: Array von Winkeln in Grad (muss von 0 bis 180 gehen)
+    - P_values_dB: Array der berechneten Leistungen in dB
+    - final_angle: Der berechnete Haupt-Einfallswinkel in Grad
+    - freq_peak: Die Frequenz, bei der gemessen wurde
+    """
+    phi_rad = np.radians(phi_deg)
+
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'}, figsize=(8, 5))
+    ax.plot(phi_rad, P_values_dB, linewidth=2, color='#1f77b4')
+
+    # --- Das Koordinatensystem einstellen (0° Rechts, 180° Links) ---
+    ax.set_theta_zero_location('E')  # 'E' steht für East (Rechts) -> 0° ist hier
+    ax.set_theta_direction(1)        # 1 = Gegen den Uhrzeigersinn (Standard Mathe-Konvention)
+    ax.set_thetamin(0)               # Halbkreis beginnt rechts bei 0°
+    ax.set_thetamax(180)             # Halbkreis endet links bei 180°
+
+    # Y-Achse (dB) skalieren
+    y_min = max(-15, np.min(P_values_dB)) 
+    ax.set_ylim([y_min, 0])
+    
+    # Die dB-Beschriftungen (die Ringe) auf die 90°-Achse (Mitte oben) legen, 
+    # damit sie rechts und links nicht mit der 0°-180°-Linie kollidieren
+    ax.set_rlabel_position(90) 
+
+    # Titel setzen
+    plt.title(f"DOA Bartlett Spektrum bei {freq_peak:.0f} Hz\nGefundener Winkel: {final_angle}°\n", va='bottom')
+    
+    plt.tight_layout()
+    plt.show()
