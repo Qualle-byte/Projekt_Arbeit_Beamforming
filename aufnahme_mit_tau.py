@@ -9,11 +9,13 @@ import matplotlib.pyplot as plt
 import sys
 import simpleaudio as sa
 
+from taucompensation import FRAME_RATE
+
 matplotlib.use("TkAgg")
 np.set_printoptions(threshold=sys.maxsize)
 
 RATE = 48000
-SECONDS = 3
+SECONDS = 2
 OUTPUT_FILENAME = "output.wav"
 TARGET = "alsa_input.usb-Yamaha_Corporation_Steinberg_UR816C-00.pro-input-0"
 
@@ -27,18 +29,22 @@ for i in range(len(bit_Signal)):
         Pilot_signal[i] = int(-1)
     np.append(Pilot_signal, Pilot_signal[i])
 
-# 2 kHz sine wave
-sine_wave = np.sin(2 * np.pi * 2000 * np.arange(1024) / 48000)
+# ... davor bleibt alles gleich (bit_Signal etc.) ...
+
+# 2 kHz sine wave - DIESMAL 1 SEKUNDE LANG (48000 Samples)
+sine_wave = np.sin(2 * np.pi * 2000 * np.arange(48000) / 48000)
+
 # append sine wave to Pilot_signal
 Signal_A = np.append(Pilot_signal, sine_wave)
-    
-FRAME_RATE = 48000
+
+# Auf 16-Bit skalieren (wie zuvor besprochen)
+audio_data_16bit = np.int16(Signal_A * 32767)
+
 with wave.open("Pilot_signal.wav", mode="wb") as wav_file:
     wav_file.setnchannels(1)
-    wav_file.setsampwidth(1)
+    wav_file.setsampwidth(2) # 16-Bit
     wav_file.setframerate(FRAME_RATE)
-    wav_file.writeframes(bytes(Signal_A))
-    wav_file.close()
+    wav_file.writeframes(audio_data_16bit.tobytes())
 
 
 print(f"Aufnahme: 10 Kanäle (extrahiere 0-3), {RATE} Hz, {SECONDS}s ...")
@@ -54,7 +60,7 @@ proc = subprocess.Popen([
 ])
 
 # 2. Kurze Pause, damit die Aufnahme sicher läuft, bevor der Ton startet
-time.sleep(0.2)
+#time.sleep(0.2)
 
 # 3. Ton abspielen (läuft im Hintergrund weiter)
 print("Spiele Pilot-Signal ab...")
@@ -62,7 +68,7 @@ subprocess.run(["pw-play", "Pilot_signal.wav"])
 print("Abspielen beendet.")
 
 # 4. Restliche Zeit abwarten (SECONDS minus die Pause oben)
-time.sleep(SECONDS - 0.2)
+#time.sleep(SECONDS)
 
 # 5. Aufnahme beenden
 proc.send_signal(signal.SIGINT)
