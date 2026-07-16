@@ -24,20 +24,20 @@ FORMAT = pyaudio.paInt32        # 32-bit — must match s32le from PipeWire
 CHANNELS = 4                    # Physical inputs 1–4 on the UR816C
 RATE = 48000                    # Must be 48000 — what the device actually runs at
 RECORD_SECONDS = 10
-OUTPUT_FILENAME = "output.wav"
+OUTPUT_FILENAME = "10grad.wav"
 DEVICE_INDEX = 2                # UR816C index found by scanner
 
 # === Aufnahme starten ===
 # === WAV einlesen & Kanäle trennen ===
-fs_rate, audio_signal = wavfile.read("10grad.wav")
-mikro_1 = audio_signal[:, 0]   # Physical input 1
-mikro_2 = audio_signal[:, 1]   # Physical input 2
-mikro_3 = audio_signal[:, 2]   # Physical input 3
-mikro_4 = audio_signal[:, 3]   # Physical input 4
+fs_rate, audio_signal = wavfile.read("output.wav")
+mikro_1 = audio_signal[19200:20224, 0]   # Physical input 1
+mikro_2 = audio_signal[19200:20224, 1]   # Physical input 2
+mikro_3 = audio_signal[19200:20224, 2]   # Physical input 3
+mikro_4 = audio_signal[19200:20224, 3]   # Physical input 4
 
 
 # === Vorbereitung für Zeitbereichsanalyse ===
-N = len(audio_signal)  # Anzahl der Samples
+N = len(mikro_1)  # Anzahl der Samples
 t = np.linspace(0, N / fs_rate, num=N)  # Zeitachse in Sekunden
 
 ## === Zeitbereichs-Darstellung des Signals ===
@@ -67,12 +67,12 @@ y_peak = fft(mikro_2)[idx_peak]
 c = 343.0  # Schallgeschwindigkeit in m/s
 d = 0.08575    # Mikrofonabstand in m
 Funktionen.Winkel_LDS(x_peak, y_peak,freq_peak,d)
-mikro_daten = audio_signal[:, 0:4]
+mikro_daten = audio_signal[19200:20224, 0:4]
 normierte_mikro_daten = Funktionen.normiertefunktionen(mikro_daten)
 mikro_daten_analytic = signal.hilbert(normierte_mikro_daten, axis=0)
 
 # Autokovarianzmatrix
-R_xx = Funktionen.Autokovarianzmatrix_schneller(mikro_daten_analytic,N)
+#R_xx = Funktionen.Autokovarianzmatrix_schneller(mikro_daten_analytic,N)
 R_xx1 = np.cov(mikro_daten_analytic, rowvar=False)  # Autokovarianzmatrix für die ersten 4 Mikrofone
 #R_xx1 = (mikro_daten.conj().T @ mikro_daten) / N
 

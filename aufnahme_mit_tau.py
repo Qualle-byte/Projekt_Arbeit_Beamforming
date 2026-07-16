@@ -20,6 +20,7 @@ OUTPUT_FILENAME = "output.wav"
 TARGET = "alsa_input.usb-Yamaha_Corporation_Steinberg_UR816C-00.pro-input-0"
 
 # Pilot signal
+np.random.seed(42)  # For reproducibility
 bit_Signal = np.random.randint(0,2, size=1024)
 Pilot_signal = np.zeros(1024)
 for i in range(len(bit_Signal)):
